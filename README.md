@@ -19,3 +19,7 @@
 - Search "proto3"
 - Edit setting.json
 - Add json code above to "portoc" to setting.json.
+
+## Install clang-format to format \*.proto
+
+- brew install clang-format
