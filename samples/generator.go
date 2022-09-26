@@ -120,7 +120,7 @@ func NewLaptop() *pb.Laptop{
 		},
 		PriceUsd: randomFloat64(1500, 3500),
 		ReleaseYear: uint32(randomInt(2015, 2022)),
-		ReleaseDate: timestamppb.Now(),
+		UpdatedAt: timestamppb.Now(),
 	}	
 
 	return laptop

@@ -27,5 +27,5 @@ message Laptop {
   }
   double price_usd = 12;
   uint32 release_year = 13;
-  google.protobuf.Timestamp release_date = 14;
+  google.protobuf.Timestamp updated_at = 14;
 }
