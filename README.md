@@ -152,3 +152,57 @@ sourceSets {
 }
 
 ```
+
+# Lecture #9.1
+
+## Error
+
+- protoreflect.ProtoMessage does not implement protoiface.MessageV1 (missing ProtoMessage method)
+
+## Solution
+
+- https://github.com/golang/protobuf/issues/1133
+
+- From dsnt
+
+- There's a mismatch going on, since the code is trying to pass a "google.golang.org/protobuf/proto".Message to "github.com/golang/protobuf/jsonpb".Marshaler.MarshalToString, which expects a "github.com/golang/protobuf/proto".Message.
+
+- This can be resolved by either:
+
+1. Using the "google.golang.org/protobuf/encoding/protojson" package instead, which accepts the newer Message interface type you currently have on hand, OR
+2. Use the "github.com/golang/protobuf/proto".MessageV1 adaptor function to convert the newer Message interface type you have to the legacy one.
+   I recommend the first solution:
+
+```
+package serializer
+
+import (
+    "google.golang.org/protobuf/encoding/protojson"
+    "google.golang.org/protobuf/proto"
+)
+
+func ProtobufToJSON(message proto.Message) (string, error) {
+    b, err := protojson.MarshalOptions{
+        Indent: true,
+        UseProtoNames: true,
+        EmitUnpopulated: true,
+    }
+    return string(b), err
+}
+```
+
+### Reasons
+
+- The lecture's protoc codegen is different from the latest protoc codegen.
+- The latest protoc codegen generate the code importing from google.golang.org/protobuf/proto
+
+- e.g.
+
+```
+import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
+)
+```
