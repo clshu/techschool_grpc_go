@@ -28,18 +28,18 @@ func (s *LaptopServer) CreateLaptop(
 	) (*pb.CreateLaptopResponse, error) {
 		laptop := req.GetLaptop()
 		id := laptop.GetId()
-		log.Printf("received a create-laptop request with id: %s", id)
+		log.Printf("received a create-laptop request with id: %v", id)
 		
 		if len(id) > 0 {
 			// check if the laptop id is valid
 			_, err := uuid.Parse(id)
 			if err != nil {
-				return nil, status.Error(codes.InvalidArgument, "laptop id is not valid UUID: %v")
+				return nil, status.Errorf(codes.InvalidArgument, "laptop id is not valid UUID: %v", id)
 			}
 		} else {
 			id, err := uuid.NewRandom()
 			if err != nil {
-				return nil, status.Error(codes.Internal, "cannot generate laptop ID: %v")
+				return nil, status.Error(codes.Internal, "cannot generate laptop ID")
 			}
 			laptop.Id = id.String()
 
