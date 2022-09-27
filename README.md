@@ -206,3 +206,12 @@ import (
 	sync "sync"
 )
 ```
+
+# Lecture #10.1
+
+## protoc works differently
+
+- Need to add "--go-grpc_out=." to protoc arguments
+- LaptopService is created in a different file
+- 2 files created. laptop_service.pb.go and laptop_service_grpc.pb.go
+- Install google.golang.org/grpc
