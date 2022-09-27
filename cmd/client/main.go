@@ -6,6 +6,7 @@ import (
 	"learngrpc/pcbook/pb"
 	sample "learngrpc/pcbook/samples"
 	"log"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -34,7 +35,11 @@ func main() {
 			Laptop: laptop,
 		}
 
-		res, err := laptopClient.CreateLaptop(context.Background(), req)
+		// set timeout to 1 seconds
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		res, err := laptopClient.CreateLaptop(ctx, req)
 		if err != nil {
 			st, ok := status.FromError(err)
 			if ok && st.Code() == codes.AlreadyExists {

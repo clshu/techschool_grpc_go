@@ -4,6 +4,7 @@ import (
 	"context"
 	"learngrpc/pcbook/pb"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -44,6 +45,21 @@ func (s *LaptopServer) CreateLaptop(
 			laptop.Id = id.String()
 
 		}
+
+		// some heavy processing
+		time.Sleep(4 * time.Second)
+
+		if ctx.Err() == context.Canceled {
+			log.Print("request is canceled")
+			return nil, status.Error(codes.Canceled, "request is canceled")
+		}
+
+		if ctx.Err() == context.DeadlineExceeded {
+			log.Print("deadline is exceeded")
+			return nil, status.Error(codes.DeadlineExceeded, "deadline is exceeded")
+		}
+
+
 		// save the laptop to the store
 		// ... in memory store for now
 		err := s.Store.Save(laptop)
