@@ -68,7 +68,7 @@ func (s *LaptopServer) CreateLaptop(
 			if err == ErrAlreadyExists {
 				code = codes.AlreadyExists
 			}
-			return nil, status.Error(code, "cannot save laptop to store: %v")
+			return nil, status.Errorf(code, "Duplicate ID: %v", laptop.Id)
 		}
 		log.Printf("saved laptop with id: %s", laptop.Id)
 		// create a response

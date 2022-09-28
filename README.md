@@ -237,3 +237,22 @@ type LaptopServer struct {
 	pb.UnimplementedLaptopServiceServer
 }
 ```
+
+# Lecture #10.2
+
+## Preps
+
+- Copied laptop_service.proto
+- Find Java Annotation API. Click Gradle tab. Pick latest
+- https://mvnrepository.com/artifact/javax.annotation/javax.annotation-api/1.3.2
+- Update build.gradle
+
+## Create Laptop service server code in Java.
+
+    1. Add Java Annotation dependency to build.gradle.
+    2. Copy laptop_service.proto from golang side.
+    3. Codegen on laptop_service.proto.
+    4. Create LaptopService class to implemet CreateLaptop.
+    5. Create LaptopStore Interface and InMemoryLaptopStore class to store data.
+    6. Create LaptopServer class to run gRPC server.
+    7. Create AlreadyExistException class.
