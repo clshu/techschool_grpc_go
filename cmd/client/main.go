@@ -35,8 +35,7 @@ func main() {
 			Laptop: laptop,
 		}
 
-		// set timeout to 1 seconds
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		res, err := laptopClient.CreateLaptop(ctx, req)

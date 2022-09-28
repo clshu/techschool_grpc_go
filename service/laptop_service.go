@@ -4,7 +4,6 @@ import (
 	"context"
 	"learngrpc/pcbook/pb"
 	"log"
-	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -47,7 +46,7 @@ func (s *LaptopServer) CreateLaptop(
 		}
 
 		// some heavy processing
-		time.Sleep(4 * time.Second)
+		// time.Sleep(6 * time.Second)
 
 		if ctx.Err() == context.Canceled {
 			log.Print("request is canceled")
