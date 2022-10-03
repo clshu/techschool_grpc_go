@@ -264,3 +264,148 @@ type LaptopServer struct {
     3. Implement LaptopServer.SearchLaptop
     4. Add context code to detect cancel and deadline exceeds conditions.
     5. LaptopStore.Search uses a callback function as one of the arguments and LaptopServer.SearchLaptop passes a streaming function as the callback to LaptopStore.Search.
+
+# Lecture #11.2
+
+1. Add void Search(LaptopFilter filter, LaptopStream stream); to LaptopStore Interface.
+
+```
+public interface LaptopStore {
+    // It could be a db, in memory store for now
+    void Save(Laptop laptop) throws Exception;
+    Laptop Find(String id);
+    void Search(LaptopFilter filter, LaptopStream stream);
+}
+```
+
+2. Create a new Interface LaptopStream with void Send(Laptop laptop);. This will be a callback and implemented by the caller of LaptopStore.Search().
+
+```
+public interface LaptopStream {
+    void Send(Laptop laptop);
+}
+```
+
+3. In InMemoryLaptopStore.Search(filter, stream),
+
+- It iterates all entries in data.
+- When the entry matches the filter, it calls stream.Send(laptop) to send out laptop entry.
+- The stream is passed down by the caller.
+
+```
+@Override
+    public void Search(LaptopFilter filter, LaptopStream stream) {
+        for (Map.Entry<String, Laptop> entry: data.entrySet()) {
+            Laptop laptop = entry.getValue();
+            if (isQualified(filter, laptop)) {
+                stream.Send(laptop.toBuilder().build());
+            }
+        }
+    }
+
+    private boolean isQualified(LaptopFilter filter, Laptop laptop) {
+        if (laptop.getPriceUsd() > filter.getMaxPriceUsd()) {
+            return false;
+        }
+        if (laptop.getCpu().getNumCores() < filter.getMinCpuCores()) {
+            return false;
+        }
+        if (laptop.getCpu().getMinGhz() < filter.getMinCpuGhz()) {
+            return false;
+        }
+        if (toBit(laptop.getRam()) < toBit(filter.getMinRam())) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private long toBit(Memory ram) {
+        long value = ram.getValue();
+        switch (ram.getUnit()) {
+            case BIT:
+                return  value;
+            case BYTE:
+                return value << 3; // 8 bits = 2^3 BIT
+            case KILLOBYTE:
+                return value << 13; // 8 * 1024 = 2^13 BIT
+            case MEGABYTE:
+                return value << 23; // 8 * 1024 * 1024 = 2^23 BIT
+            case GIGABYTE:
+                return value << 33; // 8 * 1024 * 1024 * 1024 = 2^33 BIT
+            case TERABYTE:
+                return value << 43; // 8 * 1024 * 1024 * 1024 * 1024 = 2^43 BIT
+            default:
+                return 0;
+        }
+    }
+```
+
+4. In LaptopService.searchLaptop(request, responseStreamObserver),
+
+```
+public void searchLaptop(SearchLaptopRequest request, StreamObserver<SearchLaptopResponse> responseStreamObserver) {
+        LaptopFilter filter = request.getFilter();
+        logger.info("get a search-laptop request with filter:\n" + filter);
+
+        store.Search(filter, new LaptopStream() {
+            @Override
+            public void Send(Laptop laptop) {
+                logger.info("found laptop with ID: " + laptop.getId());
+                SearchLaptopResponse response = SearchLaptopResponse.newBuilder().setLaptop(laptop).build();
+                responseStreamObserver.onNext(response);
+            }
+        });
+
+        responseStreamObserver.onCompleted();
+        logger.info("search laptop completed");
+    }
+```
+
+5. In LaptopClient
+
+- New methods
+
+```
+    private void SearchLaptop(LaptopFilter filter) {
+        logger.info("search started");
+
+        SearchLaptopRequest request = SearchLaptopRequest.newBuilder().setFilter(filter).build();
+        Iterator<SearchLaptopResponse> responseIterator = blockingStub.searchLaptop(request);
+        while (responseIterator.hasNext()) {
+            SearchLaptopResponse response = responseIterator.next();
+            Laptop laptop = response.getLaptop();
+            logLaptop(laptop);
+        }
+        logger.info("search completed");
+    }
+
+    private void logLaptop(Laptop laptop) {
+        logger.info("_ found: " + laptop.getId());
+        // May log more info later
+    }
+
+```
+
+- In main()
+
+```
+           for (int i = 0; i < 10; i++) {
+                Laptop laptop = generator.NewLaptop();
+                client.createLaptop(laptop);
+            }
+
+            Memory minRam = Memory.newBuilder()
+                    .setValue(8)
+                    .setUnit(Memory.Unit.GIGABYTE)
+                    .build();
+
+            LaptopFilter filter = LaptopFilter.newBuilder()
+                    .setMaxPriceUsd(3000)
+                    .setMinCpuCores(4)
+                    .setMinCpuGhz(2.5)
+                    .setMinRam(minRam)
+                    .build();
+
+            client.SearchLaptop(filter);
+```
