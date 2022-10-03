@@ -256,3 +256,11 @@ type LaptopServer struct {
     5. Create LaptopStore Interface and InMemoryLaptopStore class to store data.
     6. Create LaptopServer class to run gRPC server.
     7. Create AlreadyExistException class.
+
+# Lecture #11.1
+
+    1. Create laptop_filter_proto for the search filter.
+    2. Implement LaptopStore.Search.
+    3. Implement LaptopServer.SearchLaptop
+    4. Add context code to detect cancel and deadline exceeds conditions.
+    5. LaptopStore.Search uses a callback function as one of the arguments and LaptopServer.SearchLaptop passes a streaming function as the callback to LaptopStore.Search.
