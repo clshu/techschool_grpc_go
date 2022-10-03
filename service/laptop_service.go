@@ -76,3 +76,32 @@ func (s *LaptopServer) CreateLaptop(
 		}
 		return res, nil
 }
+
+// SearchLaptop searches for a laptop with filter.
+func (s *LaptopServer) SearchLaptop(
+	req *pb.SearchLaptopRequest,
+	stream pb.LaptopService_SearchLaptopServer,
+	) error {
+		log.Print("received a search-laptop request")
+		filter := req.GetFilter()
+		err := s.Store.Search(
+			stream.Context(),
+			filter,
+			func(laptop *pb.Laptop) error {
+			res := &pb.SearchLaptopResponse{
+				Laptop: laptop,
+			}
+			err := stream.Send(res)
+			if err != nil {
+				return err
+			}
+			log.Printf("sent laptop with id: %s", laptop.Id)
+			return nil
+		})
+		
+		if err != nil {
+			return err
+		}
+		return nil
+}
+
