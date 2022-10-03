@@ -7,7 +7,6 @@ import (
 	"learngrpc/pcbook/pb"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/jinzhu/copier"
 )
@@ -63,13 +62,13 @@ func (store *InMemoryLaptopStore) Find(id string) (*pb.Laptop, error) {
 	// deep copy
 	return deepCopy(laptop)
 }
-
+// Search searches for laptops that match the filter criteria
 func (store *InMemoryLaptopStore) Search(ctx context.Context, filter *pb.LaptopFilter, found func(laptop *pb.Laptop) error) error {
 	store.mutex.RLock()
 	defer store.mutex.RUnlock()
 	for _, laptop := range store.data {
-		time.Sleep(1 * time.Second)
-		log.Print("checking laptop id: ", laptop.Id)
+		// time.Sleep(1 * time.Second)
+		// log.Print("checking laptop id: ", laptop.Id)
 		if ctx.Err() == context.Canceled || ctx.Err() == context.DeadlineExceeded {
 			log.Print("context is cancelled")
 			return errors.New("context is cancelled")
