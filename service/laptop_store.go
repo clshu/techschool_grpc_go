@@ -99,7 +99,7 @@ func isQualified(filter *pb.LaptopFilter, laptop *pb.Laptop) bool {
 	if laptop.GetCpu().GetMinGhz() < filter.MinCpuGhz {
 		return false
 	}
-	if toBits(laptop.GetMemory()) < toBits(filter.MinMemory) {
+	if toBits(laptop.GetRam()) < toBits(filter.MinRam) {
 		return false
 	}
 	return true

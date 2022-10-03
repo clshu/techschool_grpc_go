@@ -47,7 +47,7 @@ func TestClientSearchLaptop(t *testing.T) {
 		MaxPriceUsd: 2000,
 		MinCpuCores: 4,
 		MinCpuGhz: 2.2,
-		MinMemory: &pb.Memory{
+		MinRam: &pb.Memory{
 			Value: 8,
 			Unit: pb.Memory_GIGABYTE,
 		},
@@ -68,7 +68,7 @@ func TestClientSearchLaptop(t *testing.T) {
 			laptop.Cpu.MinGhz = 2.0
 		case 3:
 			// 4 Gigabytes
-			laptop.Memory = &pb.Memory{
+			laptop.Ram = &pb.Memory{
 				Value: 4096,
 				Unit: pb.Memory_MEGABYTE,
 			}
@@ -77,7 +77,7 @@ func TestClientSearchLaptop(t *testing.T) {
 				laptop.Cpu.NumCores = 4
 				laptop.Cpu.MinGhz = 2.5
 				laptop.Cpu.MaxGhz = 4.5
-				laptop.Memory = &pb.Memory{
+				laptop.Ram = &pb.Memory{
 					Value: 16,
 					Unit: pb.Memory_GIGABYTE,
 				}
@@ -87,7 +87,7 @@ func TestClientSearchLaptop(t *testing.T) {
 			laptop.Cpu.NumCores = 6
 				laptop.Cpu.MinGhz = 2.8
 				laptop.Cpu.MaxGhz = 5.0
-				laptop.Memory = &pb.Memory{
+				laptop.Ram = &pb.Memory{
 					Value: 64,
 					Unit: pb.Memory_GIGABYTE,
 				}

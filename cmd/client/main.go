@@ -71,7 +71,7 @@ func logLaptop(laptop *pb.Laptop) {
 	log.Print(" + cpu cores: ", laptop.GetCpu().GetNumCores())
 	log.Print(" + cpu minGhz: ", laptop.GetCpu().GetMinGhz())
 	log.Print(" + cpu maxGhz: ", laptop.GetCpu().GetMaxGhz())
-	log.Print(" + ram: ", laptop.GetMemory().GetValue(), laptop.GetMemory().GetUnit())
+	log.Print(" + ram: ", laptop.GetRam().GetValue(), laptop.GetRam().GetUnit())
 	log.Print(" + price: ", laptop.GetPriceUsd(), "usd")
 }
 
@@ -99,7 +99,7 @@ func main() {
 			MaxPriceUsd: 3000,
 			MinCpuCores: 4,
 			MinCpuGhz: 2.5,
-			MinMemory: &pb.Memory{
+			MinRam: &pb.Memory{
 				Value: 8,
 				Unit: pb.Memory_GIGABYTE,
 			},

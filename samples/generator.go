@@ -111,7 +111,7 @@ func NewLaptop() *pb.Laptop{
 		Name: name,
 		Cpu: NewCPU(),
 		Gpu: []*pb.GPU{NewGPU()},
-		Memory: NewRAM(),
+		Ram: NewRAM(),
 		Storage: []*pb.Storage{ NewSSD(), NewHDD()},
 		Screen: NewScreen(),
 		Keyboard: NewKeyboard(),
