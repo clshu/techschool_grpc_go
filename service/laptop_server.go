@@ -12,13 +12,14 @@ import (
 
 // LaptopServer is a service that provides laptop services.
 type LaptopServer struct {
-	Store LaptopStore
+	laptopStore LaptopStore
+	imageStore ImageStore
 	pb.UnimplementedLaptopServiceServer
 }
 
 // NewLaptopServer creates a new LaptopServer.
-func NewLaptopServer(store LaptopStore) *LaptopServer {
-	return &LaptopServer{store, pb.UnimplementedLaptopServiceServer{}}
+func NewLaptopServer(laptopStore LaptopStore, imageStore ImageStore) *LaptopServer {
+	return &LaptopServer{laptopStore, imageStore, pb.UnimplementedLaptopServiceServer{}}
 }
 
 // CreateLaptop creates a new laptop.
@@ -61,7 +62,7 @@ func (s *LaptopServer) CreateLaptop(
 
 		// save the laptop to the store
 		// ... in memory store for now
-		err := s.Store.Save(laptop)
+		err := s.laptopStore.Save(laptop)
 		if err != nil {
 			code := codes.Internal
 			if err == ErrAlreadyExists {
@@ -84,7 +85,7 @@ func (s *LaptopServer) SearchLaptop(
 	) error {
 		log.Print("received a search-laptop request")
 		filter := req.GetFilter()
-		err := s.Store.Search(
+		err := s.laptopStore.Search(
 			stream.Context(),
 			filter,
 			func(laptop *pb.Laptop) error {

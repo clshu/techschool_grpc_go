@@ -17,7 +17,7 @@ func main() {
 		log.Printf("start server on port %d", *port)
 
 		// create a new server
-		laptopServer := service.NewLaptopServer(service.NewInMemoryLaptopStore())
+		laptopServer := service.NewLaptopServer(service.NewInMemoryLaptopStore(), nil)
 		grpcServer := grpc.NewServer()
 		pb.RegisterLaptopServiceServer(grpcServer, laptopServer)
 
