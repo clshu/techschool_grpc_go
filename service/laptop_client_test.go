@@ -1,13 +1,17 @@
 package service_test
 
 import (
+	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"learngrpc/pcbook/pb"
 	sample "learngrpc/pcbook/samples"
 	"learngrpc/pcbook/serializer"
 	"learngrpc/pcbook/service"
 	"net"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -122,6 +126,36 @@ func TestClientSearchLaptop(t *testing.T) {
 	require.Equal(t, len(expectedIDs), found)
 }
 
+func TestClientUploadImage(t *testing.T) {
+	t.Parallel()
+
+	fileName := "macbook-air-gold-2015-16.jpg"
+	from := "../from/" + fileName
+	to := "../tmp/" + fileName
+
+	// Copy the file
+	err := copyFile(from, to)
+	require.NoError(t, err)
+
+	testImageFolder := "../tmp"
+	imageStore := service.NewDiskImageStore(testImageFolder)
+	laptopStore := service.NewInMemoryLaptopStore()
+
+	laptop := sample.NewLaptop()
+	err = laptopStore.Save(laptop)
+	require.NoError(t, err)
+
+	serverAddress := startTestLaptopServer(t, laptopStore, imageStore)
+	laptopClient := newTestLaptopClient(t, serverAddress)
+
+	
+
+	uploadImageTest(t, laptopClient, laptop.Id, to, testImageFolder)
+
+	// clean up
+	require.NoError(t, os.Remove(to))
+}
+
 func startTestLaptopServer(t *testing.T, laptopStore service.LaptopStore, imageStore service.ImageStore) string {
 	laptopServer := service.NewLaptopServer(laptopStore, imageStore)
 	grpcServer := grpc.NewServer()
@@ -152,4 +186,90 @@ func requireSameLaptop(t *testing.T, expected, actual *pb.Laptop) {
 	require.NotEmpty(t, json2)
 	
 	require.Equal(t, json1, json2)
+}
+
+func uploadImageTest(t *testing.T, laptopClient pb.LaptopServiceClient, laptopID string, imagePath string, testImageFolder string) {
+	file, err := os.Open(imagePath)
+	defer file.Close()
+	require.NoError(t, err)
+
+	// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// defer cancel()
+
+	stream, err := laptopClient.UploadImage(context.Background())
+	require.NoError(t, err)
+
+	imageType := filepath.Ext(imagePath)
+
+	req := &pb.UploadImageRequest{
+		Data: &pb.UploadImageRequest_Info{
+			Info: &pb.ImageInfo{
+				LaptopId: laptopID,
+				ImageType: imageType,
+			},
+		},
+	}
+
+	err = stream.Send(req)
+	require.NoError(t, err)
+
+	reader := bufio.NewReader(file)
+	buffer := make([]byte, 1024)
+	size := 0
+
+	for {
+		n, err := reader.Read(buffer)
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		size += n
+
+		req := &pb.UploadImageRequest{
+			Data: &pb.UploadImageRequest_ChunkData{
+				ChunkData: buffer[:n],
+			},
+		}
+
+		err = stream.Send(req)
+		require.NoError(t, err)
+	}
+
+	res, err := stream.CloseAndRecv()
+	require.NoError(t, err)
+	require.NotEmpty(t, res.GetId())
+	require.Equal(t, size, int(res.GetSize()))
+
+	savedImaePath := fmt.Sprintf("%s/%s%s", testImageFolder, res.GetId(), imageType)
+	require.FileExists(t, savedImaePath)
+	require.NoError(t, os.Remove(savedImaePath))
+}
+
+func copyFile(from, to string) error {
+	  sfi, err := os.Stat(from)
+		if err != nil {
+			return err
+		}
+		if !sfi.Mode().IsRegular() {
+        // cannot copy non-regular files (e.g., directories,
+        // symlinks, devices, etc.)
+        return fmt.Errorf("CopyFile: non-regular source file %s (%q)", sfi.Name(), sfi.Mode().String())
+    }
+		dfi, err := os.Stat(to)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return os.Link(from, to)
+			} else {
+				os.Remove(to)
+				return os.Link(from, to)
+			}
+		} else {
+			if !(dfi.Mode().IsRegular()) {
+				return fmt.Errorf("CopyFile: non-regular destination file %s (%q)", dfi.Name(), dfi.Mode().String())
+			}
+			if os.SameFile(sfi, dfi) {
+				return nil
+			}
+		}
+		return nil
 }

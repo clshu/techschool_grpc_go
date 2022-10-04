@@ -6,7 +6,6 @@ import (
 	"io"
 	"learngrpc/pcbook/pb"
 	"log"
-	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -158,7 +157,7 @@ func (s *LaptopServer) UploadImage(stream pb.LaptopService_UploadImageServer) er
 			}
 
 			// write slowly
-			time.Sleep(1 * time.Second)
+			// time.Sleep(1 * time.Second)
 
 			_, err = imageData.Write(chunk)
 			if err != nil {
