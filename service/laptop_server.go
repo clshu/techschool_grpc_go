@@ -6,6 +6,7 @@ import (
 	"io"
 	"learngrpc/pcbook/pb"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -52,21 +53,15 @@ func (s *LaptopServer) CreateLaptop(
 
 		// some heavy processing
 		// time.Sleep(6 * time.Second)
-
-		if ctx.Err() == context.Canceled {
-			log.Print("request is canceled")
-			return nil, status.Error(codes.Canceled, "request is canceled")
+		
+		err := contexError(ctx)
+		if err != nil {
+			return nil, err
 		}
-
-		if ctx.Err() == context.DeadlineExceeded {
-			log.Print("deadline is exceeded")
-			return nil, status.Error(codes.DeadlineExceeded, "deadline is exceeded")
-		}
-
 
 		// save the laptop to the store
 		// ... in memory store for now
-		err := s.laptopStore.Save(laptop)
+		err = s.laptopStore.Save(laptop)
 		if err != nil {
 			code := codes.Internal
 			if err == ErrAlreadyExists {
@@ -135,6 +130,12 @@ func (s *LaptopServer) UploadImage(stream pb.LaptopService_UploadImageServer) er
 	bulkSize := 10 * 1024
 
 	for {
+		// check if the context is canceled or deadline is exceeded
+		err := contexError(stream.Context())
+		if err != nil {
+			return err
+		}
+
 		if imageSize % bulkSize == 0 {
 			log.Printf("image size: %d", imageSize)
 		}
@@ -153,8 +154,11 @@ func (s *LaptopServer) UploadImage(stream pb.LaptopService_UploadImageServer) er
 			size := len(chunk)
 			imageSize += size
 			if imageSize > maxImageSize {
-				return logError(status.Errorf(codes.InvalidArgument, "image size is too large: %d", imageSize))
+				return logError(status.Errorf(codes.InvalidArgument, "image size is too large: %d > %d", imageSize, maxImageSize))
 			}
+
+			// write slowly
+			time.Sleep(1 * time.Second)
 
 			_, err = imageData.Write(chunk)
 			if err != nil {
@@ -187,4 +191,15 @@ func logError(err error) error {
 
 	return err
 }
+
+func contexError(ctx context.Context) error {
+	switch ctx.Err() {
+	case context.Canceled:
+		return logError(status.Error(codes.Canceled, "request is canceled"))
+	case context.DeadlineExceeded:
+		return logError(status.Error(codes.DeadlineExceeded, "deadline is exceeded"))
+	default:
+		return nil
+	}
+}	
 
