@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package techschool.pcbook;
+
+option go_package = "./pb";
+option java_package = "com.techschool.pcbook.pb";
+option java_multiple_files = true;
+
+message ImageInfo {
+  string laptop_id = 1;
+  string image_type = 2;
+}
