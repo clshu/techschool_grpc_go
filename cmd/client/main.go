@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"io"
 	"learngrpc/pcbook/pb"
 	sample "learngrpc/pcbook/samples"
 	"log"
+	"os"
+	"path/filepath"
 	"time"
 
 	"google.golang.org/grpc"
@@ -14,10 +17,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func createLaptop(laptopClient pb.LaptopServiceClient) {
-	laptop := sample.NewLaptop()
-		laptop.Id = ""
-
+func createLaptop(laptopClient pb.LaptopServiceClient, laptop *pb.Laptop) {
+		
 		req := &pb.CreateLaptopRequest{
 			Laptop: laptop,
 		}
@@ -75,7 +76,98 @@ func logLaptop(laptop *pb.Laptop) {
 	log.Print(" + price: ", laptop.GetPriceUsd(), "usd")
 }
 
+func uploadImage(laptopClient pb.LaptopServiceClient, laptopID string, imagePath string) {
+	file, err := os.Open(imagePath)
+	if err != nil {
+		log.Fatalf("cannot open image file: %v", err)
+	}
+	defer file.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	stream, err := laptopClient.UploadImage(ctx)
+	if err != nil {
+		log.Fatalf("cannot upload image: %v", err)
+	}
+
+	req := &pb.UploadImageRequest{
+		Data: &pb.UploadImageRequest_Info{
+			Info: &pb.ImageInfo{
+				LaptopId: laptopID,
+				ImageType: filepath.Ext(imagePath),
+			},
+		},
+	}
+
+	err = stream.Send(req)
+	if err != nil {
+		log.Fatalf("cannot send image info: %v", err)
+	}
+
+	reader := bufio.NewReader(file)
+	buffer := make([]byte, 1024)
+	for {
+		n, err := reader.Read(buffer)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatalf("cannot read image file: %v", err)
+		}
+
+		req := &pb.UploadImageRequest{
+			Data: &pb.UploadImageRequest_ChunkData{
+				ChunkData: buffer[:n],
+			},
+		}
+
+		err = stream.Send(req)
+		if err != nil {
+			err2 := stream.RecvMsg(nil)
+			log.Fatalf("cannot send image chunk: %v| %v", err, err2)
+		}
+	}
+
+	res, err := stream.CloseAndRecv()
+	if err != nil {
+		log.Fatalf("cannot receive response: %v", err)
+	}
+
+	log.Printf("image uploaded with id: %s", res.GetId())	
+}
+
+func testCreateLaptop(laptopClient pb.LaptopServiceClient) {
+	createLaptop(laptopClient, sample.NewLaptop())
+}
+
+func testSearchLaptop(laptopClient pb.LaptopServiceClient) {
+	for i := 0; i < 10; i++ {
+		createLaptop(laptopClient, sample.NewLaptop())
+	}	
+	// search for laptops
+	filter := &pb.LaptopFilter{
+		MaxPriceUsd: 3000,
+		MinCpuCores: 4,
+		MinCpuGhz: 2.5,
+		MinRam: &pb.Memory{
+			Value: 8,
+			Unit: pb.Memory_GIGABYTE,
+		},
+	}
+
+	searchLaptop(laptopClient, filter)
+}
+
+func testUploadImage(laptopClient pb.LaptopServiceClient) {
+	imagePath := "from/macbook-air-gold-2015-16.jpg"
+	laptop := sample.NewLaptop()
+	createLaptop(laptopClient, laptop)
+	uploadImage(laptopClient, laptop.GetId(), imagePath)
+}
+
 func main() {
+		
 		serverAddress := flag.String("address", "", "the server address")
 		flag.Parse()
 		log.Printf("dial server %s", *serverAddress)
@@ -89,21 +181,7 @@ func main() {
 		// create a new gRPC client
 		laptopClient := pb.NewLaptopServiceClient(conn)
 	
-		// create multiple new laptops on the server side
-		for i := 0; i < 10; i++ {
-			createLaptop(laptopClient)
-		}
-
-		// search for laptops
-		filter := &pb.LaptopFilter{
-			MaxPriceUsd: 3000,
-			MinCpuCores: 4,
-			MinCpuGhz: 2.5,
-			MinRam: &pb.Memory{
-				Value: 8,
-				Unit: pb.Memory_GIGABYTE,
-			},
-		}
-
-		searchLaptop(laptopClient, filter)
+		// testCreateLaptop(laptopClient)
+		// testSearchLaptop(laptopClient)
+		testUploadImage(laptopClient)		
 }

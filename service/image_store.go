@@ -48,7 +48,9 @@ func (store *DiskImageStore) Save(
 			return "", fmt.Errorf("cannot generate image ID: %w", err)
 		}
 
-		imagePath := fmt.Sprintf("%s/%s.%s", store.imageFolder, imageID, imageType)
+		createDirIfNotExist(store.imageFolder)
+
+		imagePath := fmt.Sprintf("%s/%s%s", store.imageFolder, imageID, imageType)
 
 		file, err := os.Create(imagePath)
 		if err != nil {
@@ -75,4 +77,10 @@ func (store *DiskImageStore) Save(
 // saveImageToFile saves an image to a file.
 func saveImageToFile(folder string, laptopID string, imageType string, imageData []byte) (string, error) {
 	return "", nil
+}
+
+func createDirIfNotExist(folder string) {
+	if _, err := os.Stat(folder); os.IsNotExist(err) {
+		os.MkdirAll(folder, os.ModePerm)
+	}
 }

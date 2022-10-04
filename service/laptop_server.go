@@ -1,7 +1,9 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"learngrpc/pcbook/pb"
 	"log"
 
@@ -9,6 +11,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+const maxImageSize = 1 << 20 // 1 MB
 
 // LaptopServer is a service that provides laptop services.
 type LaptopServer struct {
@@ -104,5 +108,83 @@ func (s *LaptopServer) SearchLaptop(
 			return err
 		}
 		return nil
+}
+
+// UploadImage is client streaming RPC to upload a laptop image.
+func (s *LaptopServer) UploadImage(stream pb.LaptopService_UploadImageServer) error {
+	req, err := stream.Recv()
+	if err != nil {
+		return logError(status.Errorf(codes.Unknown, "cannot receive image info: %v", err))
+	}
+
+	laptopID := req.GetInfo().GetLaptopId()
+	imageType := req.GetInfo().GetImageType()
+	log.Printf("received an ipload-image request for laptop %s with imageType %s", laptopID, imageType)
+
+	laptop, err := s.laptopStore.Find(laptopID)
+	if err != nil {
+		return logError(status.Errorf(codes.Internal, "laptop store internal error: %v", err))
+	}
+
+	if (laptop == nil) {
+		return logError(status.Errorf(codes.NotFound, "laptop not found: %v", laptopID))
+	}
+
+	imageData := bytes.Buffer{}
+	imageSize := 0
+	bulkSize := 10 * 1024
+
+	for {
+		if imageSize % bulkSize == 0 {
+			log.Printf("image size: %d", imageSize)
+		}
+		
+		req, err := stream.Recv()
+	
+			if err == io.EOF {
+				log.Printf("finished receiving image data: %d", imageSize)
+				break
+			}
+			if err != nil {
+				return logError(status.Errorf(codes.Unknown, "cannot receive image data: %v", err))
+			}
+
+			chunk := req.GetChunkData()
+			size := len(chunk)
+			imageSize += size
+			if imageSize > maxImageSize {
+				return logError(status.Errorf(codes.InvalidArgument, "image size is too large: %d", imageSize))
+			}
+
+			_, err = imageData.Write(chunk)
+			if err != nil {
+				return logError(status.Errorf(codes.Internal, "cannot write image data: %v", err))
+			}
+	}
+
+	imageID, err := s.imageStore.Save(laptopID, imageType, imageData)
+	if err != nil {
+		return logError(status.Errorf(codes.Internal, "cannot save image to store: %v", err))
+	}
+
+	res := &pb.UploadImageResponse{
+		Id: imageID,
+		Size: uint32(imageSize),
+	}
+
+	err = stream.SendAndClose(res)
+	if err != nil {
+		return logError(status.Errorf(codes.Unknown, "cannot send response: %v", err))
+	}
+	log.Printf("saved image with id: %s size: %d", imageID, imageSize)
+	return nil;
+}
+
+func logError(err error) error {
+	if err != nil {
+		log.Print(err)
+	}
+
+	return err
 }
 
