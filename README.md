@@ -409,3 +409,37 @@ public void searchLaptop(SearchLaptopRequest request, StreamObserver<SearchLapto
 
             client.SearchLaptop(filter);
 ```
+
+# Lecture #12.2
+
+## Server Side
+
+1. Implement LaptopService.uploadImage() method.
+2. public StreamObserver<UploadImageRequest> uploadImage(StreamObserver<UploadImageResponse> responseObserver);
+3. return a StreamObserver<UploadImageRequest> object.
+4. Implement the onNext() method of the StreamObserver<UploadImageRequest> object.
+5. onNext() is similar to an iteration of looping through the request stream with stream.Recv() in golang.
+6. Extract ImageInfo first then chunk data. 7. Implement onError() just log error mesage. 6. Implement onCompleted() method. It's similar to EOF of the stream.
+7. Call ImageStore.Save() to save chunk data to a disk file.
+8. Call responseObserver.onNext() to send response.
+9. Call responseObserver.onCompleted() to close the response stream.
+10. Add createDitIfNotExists() method to create a directory if it doesn't exist in DiskImageStore.Save().
+
+## Client Side
+
+1. Create asyncStub in LaptopClient:
+   private final LaptopServiceStub asyncStub;
+2. Create cleint method:
+   LaptopClient.uploadImage(String laptopID, String imagePath);.
+3. Initialize StreamObserver<UploadImageRequest> requestObserver with:
+
+- Implement StreamObserver<UploadImageResponse>
+- onNext(), oneError() and onMethod
+
+4. Call requestObserver methods:
+
+- Call onNext to send ImageInfo first
+- Then loop and read image from the fil, call onNext to send chuck data until no data to read.
+- Call onComplete to finish it
+
+5. Use CountDownLatch to synchronize.
