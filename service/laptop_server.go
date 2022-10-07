@@ -184,6 +184,56 @@ func (s *LaptopServer) UploadImage(stream pb.LaptopService_UploadImageServer) er
 	return nil;
 }
 
+// RateLaptop is a server streaming RPC to rate a laptop.
+func (s *LaptopServer) RateLaptop(stream pb.LaptopService_RateLaptopServer) error {
+	for {
+		err := contexError(stream.Context())
+		if err != nil {
+			return err
+		}
+
+		req, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return logError(status.Errorf(codes.Unknown, "cannot receive client stream request: %v", err))
+		}
+
+		laptopID := req.GetLaptopId()
+		score := req.GetScore()
+		log.Printf("received rate-laptop request with score: %f for laptop %s", score, laptopID)
+
+		found, err := s.laptopStore.Find(laptopID)
+		if err != nil {
+			return logError(status.Errorf(codes.Internal, "laptop store internal error: %v", err))
+		}
+		if (found == nil) {
+			return logError(status.Errorf(codes.NotFound, "laptop not found: %v", laptopID))
+		}
+
+		rating, err := s.ratingStore.Add(laptopID, score)
+		if err != nil {
+			return logError(status.Errorf(codes.Internal, "rating store internal error: %v", err))
+		}
+
+		res := &pb.RateLaptopResponse{
+			LaptopId: laptopID,
+			RatedCount: rating.Count,
+			AverageScore: float64(rating.Sum) / float64(rating.Count),
+		}
+
+		err = stream.Send(res)
+		if err != nil {
+			return logError(status.Errorf(codes.Unknown, "cannot send rate-laptop response: %v", err))
+		}
+		log.Printf("sent rate-laptop response with count %d, average score: %f", res.RatedCount, res.AverageScore)
+	}
+
+
+	return nil
+}
+
 func logError(err error) error {
 	if err != nil {
 		log.Print(err)

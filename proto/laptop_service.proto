@@ -31,7 +31,7 @@ message UploadImageResponse {
 }
 
 message RateLaptopRequest {
-  string id = 1;
+  string laptop_id = 1;
   double score = 2;
 }
 
