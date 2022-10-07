@@ -18,12 +18,13 @@ const maxImageSize = 1 << 20 // 1 MB
 type LaptopServer struct {
 	laptopStore LaptopStore
 	imageStore ImageStore
+	ratingStore RatingStore
 	pb.UnimplementedLaptopServiceServer
 }
 
 // NewLaptopServer creates a new LaptopServer.
-func NewLaptopServer(laptopStore LaptopStore, imageStore ImageStore) *LaptopServer {
-	return &LaptopServer{laptopStore, imageStore, pb.UnimplementedLaptopServiceServer{}}
+func NewLaptopServer(laptopStore LaptopStore, imageStore ImageStore, ratingStore RatingStore) *LaptopServer {
+	return &LaptopServer{laptopStore, imageStore, ratingStore, pb.UnimplementedLaptopServiceServer{}}
 }
 
 // CreateLaptop creates a new laptop.
