@@ -8,6 +8,7 @@ import (
 	"learngrpc/pcbook/service"
 	"log"
 	"net"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -33,14 +34,45 @@ func streamInterceptor(
 	return handler(srv, ss)
 }
 
+func sendUsers(userStore service.UserStore) error {
+	// create 2 users
+	err := createUser(userStore, "admin1", "secret", "admin")
+	if err != nil {
+		return err
+	}
+	return createUser(userStore, "user1", "secret", "user")
+}
+
+func createUser(userStore service.UserStore, username, password, role string) error {
+	user, err := service.NewUser(username, password, role)
+	if err != nil {
+		return err
+	}
+
+	return userStore.Save(user)
+}
+
+const (
+	secretKey = "longjohnsilver"
+	tokenDuration = 15 * time.Minute
+)
+
 func main() {
 		port := flag.Int("port", 0, "the server port")
 		flag.Parse()
 		log.Printf("start server on port %d", *port)
 
+		userStore := service.NewInMemoryUserStore()
+		jwtManager := service.NewJWTManager(secretKey, tokenDuration)
+		authServer := service.NewAuthServer(userStore, jwtManager)
+
 		laptopStore := service.NewInMemoryLaptopStore()
 		imageStore := service.NewDiskImageStore("img")
 		ratingStore := service.NewInMemoryRatingStore()
+		err := sendUsers(userStore)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		// create a new server
 		laptopServer := service.NewLaptopServer(laptopStore, imageStore, ratingStore)
@@ -48,6 +80,8 @@ func main() {
 			grpc.UnaryInterceptor(unaryInterceotor),
 			grpc.StreamInterceptor(streamInterceptor),
 		)
+
+		pb.RegisterAuthServiceServer(grpcServer, authServer)
 		pb.RegisterLaptopServiceServer(grpcServer, laptopServer)
 		reflection.Register(grpcServer)
 
