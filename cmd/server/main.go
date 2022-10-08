@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"learngrpc/pcbook/pb"
@@ -13,26 +12,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
-
-func unaryInterceotor(
-	ctx context.Context,
-	req interface{},
-	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler,
-) (resp interface{}, err error) {
-	log.Println("--> unary interceptor: ", info.FullMethod)
-	return handler(ctx, req)
-}
-
-func streamInterceptor(
-	srv interface{},
-	ss grpc.ServerStream,
-	info *grpc.StreamServerInfo,
-	handler grpc.StreamHandler,
-) error {
-	log.Println("--> stream interceptor: ", info.FullMethod)
-	return handler(srv, ss)
-}
 
 func sendUsers(userStore service.UserStore) error {
 	// create 2 users
@@ -65,6 +44,8 @@ func main() {
 		userStore := service.NewInMemoryUserStore()
 		jwtManager := service.NewJWTManager(secretKey, tokenDuration)
 		authServer := service.NewAuthServer(userStore, jwtManager)
+		accessibleRoles := service.NewAccessibleRoles()
+		authInterceptor := service.NewAuthInterceptor(jwtManager, accessibleRoles)
 
 		laptopStore := service.NewInMemoryLaptopStore()
 		imageStore := service.NewDiskImageStore("img")
@@ -77,8 +58,8 @@ func main() {
 		// create a new server
 		laptopServer := service.NewLaptopServer(laptopStore, imageStore, ratingStore)
 		grpcServer := grpc.NewServer(
-			grpc.UnaryInterceptor(unaryInterceotor),
-			grpc.StreamInterceptor(streamInterceptor),
+			grpc.UnaryInterceptor(authInterceptor.Unary()),
+			grpc.StreamInterceptor(authInterceptor.Stream()),
 		)
 
 		pb.RegisterAuthServiceServer(grpcServer, authServer)
