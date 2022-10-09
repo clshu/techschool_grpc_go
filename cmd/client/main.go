@@ -1,8 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"learngrpc/pcbook/client"
 	"learngrpc/pcbook/pb"
 	sample "learngrpc/pcbook/samples"
@@ -10,8 +13,9 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
-	
+
 func testCreateLaptop(laptopClient *client.LaptopClient) {
 	laptopClient.CreateLaptop(sample.NewLaptop())
 }
@@ -19,15 +23,15 @@ func testCreateLaptop(laptopClient *client.LaptopClient) {
 func testSearchLaptop(laptopClient *client.LaptopClient) {
 	for i := 0; i < 10; i++ {
 		laptopClient.CreateLaptop(sample.NewLaptop())
-	}	
+	}
 	// search for laptops
 	filter := &pb.LaptopFilter{
 		MaxPriceUsd: 3000,
 		MinCpuCores: 4,
-		MinCpuGhz: 2.5,
+		MinCpuGhz:   2.5,
 		MinRam: &pb.Memory{
 			Value: 8,
-			Unit: pb.Memory_GIGABYTE,
+			Unit:  pb.Memory_GIGABYTE,
 		},
 	}
 
@@ -70,43 +74,70 @@ func testRateLaptop(laptopClient *client.LaptopClient) {
 
 const (
 	// change username to user1 to test persion denied
-	username = "admin1"
-	password = "secret"
+	username        = "admin1"
+	password        = "secret"
 	refreshDuration = 30 * time.Second
+	caCertFile      = "cert/ca-cert.pem"
 )
 
+func loadTLSCredentials() (credentials.TransportCredentials, error) {
+	// load CA certificate
+	pemServerCA, err := ioutil.ReadFile(caCertFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// create a certificate pool from CA certificate
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(pemServerCA) {
+		return nil, fmt.Errorf("cannot add server CA's certificate")
+	}
+
+	config := &tls.Config{
+		RootCAs: certPool,
+	}
+
+	return credentials.NewTLS(config), nil
+}
+
 func main() {
-		
-		serverAddress := flag.String("address", "", "the server address")
-		flag.Parse()
-		log.Printf("dial server %s", *serverAddress)
 
-		// create a new gRPC client
-		conn, err := grpc.Dial(*serverAddress, grpc.WithInsecure())
-		if err != nil {
-			log.Fatalf("cannot dial server: %v", err)
-		}
+	serverAddress := flag.String("address", "", "the server address")
+	flag.Parse()
+	log.Printf("dial server %s", *serverAddress)
 
-		authMethods := client.NewAuthMethods()
-		authClient := client.NewAuthClient(conn, username, password)
-		interceptor, err := client.NewAuthInterceptor(authClient, authMethods, refreshDuration)
-		if err != nil {
-			log.Fatalf("cannot create auth interceptor: %v", err)
-		}
+	tlsCredentials, err := loadTLSCredentials()
+	if err != nil {
+		log.Fatalf("cannot load TLS credentials: %v", err)
+	}
 
-		conn2, err := grpc.Dial(
-			*serverAddress, 
-			grpc.WithUnaryInterceptor(interceptor.Unary()),
-			grpc.WithStreamInterceptor(interceptor.Stream()),
-			grpc.WithInsecure())
-		if err != nil {
-			log.Fatalf("cannot dial server: %v", err)
-		}
+	// create a new gRPC client
+	conn, err := grpc.Dial(*serverAddress, grpc.WithTransportCredentials(tlsCredentials))
+	if err != nil {
+		log.Fatalf("cannot dial server: %v", err)
+	}
 
-		// create a new LaptopClient
-		laptopClient := client.NewLaptopClient(conn2)
-		// testCreateLaptop(laptopClient)
-		// testSearchLaptop(laptopClient)
-		// testUploadImage(laptopClient)
-		testRateLaptop(laptopClient)	
+	authMethods := client.NewAuthMethods()
+	authClient := client.NewAuthClient(conn, username, password)
+	interceptor, err := client.NewAuthInterceptor(authClient, authMethods, refreshDuration)
+	if err != nil {
+		log.Fatalf("cannot create auth interceptor: %v", err)
+	}
+
+	conn2, err := grpc.Dial(
+		*serverAddress,
+		grpc.WithUnaryInterceptor(interceptor.Unary()),
+		grpc.WithStreamInterceptor(interceptor.Stream()),
+		grpc.WithTransportCredentials(tlsCredentials),
+	)
+	if err != nil {
+		log.Fatalf("cannot dial server: %v", err)
+	}
+
+	// create a new LaptopClient
+	laptopClient := client.NewLaptopClient(conn2)
+	// testCreateLaptop(laptopClient)
+	// testSearchLaptop(laptopClient)
+	// testUploadImage(laptopClient)
+	testRateLaptop(laptopClient)
 }

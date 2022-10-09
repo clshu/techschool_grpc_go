@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"learngrpc/pcbook/pb"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -32,49 +34,72 @@ func createUser(userStore service.UserStore, username, password, role string) er
 }
 
 const (
-	secretKey = "longjohnsilver"
+	secretKey     = "longjohnsilver"
 	tokenDuration = 15 * time.Minute
+	certFile      = "cert/server-cert.pem"
+	keyFile       = "cert/server-key.pem"
 )
 
+func loadTLSCredentials() (credentials.TransportCredentials, error) {
+	// load server certificate and private key
+	serverCert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// create credentials and return it
+	config := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+		ClientAuth:   tls.NoClientCert,
+	}
+	return credentials.NewTLS(config), nil
+}
+
 func main() {
-		port := flag.Int("port", 0, "the server port")
-		flag.Parse()
-		log.Printf("start server on port %d", *port)
+	port := flag.Int("port", 0, "the server port")
+	flag.Parse()
+	log.Printf("start server on port %d", *port)
 
-		userStore := service.NewInMemoryUserStore()
-		jwtManager := service.NewJWTManager(secretKey, tokenDuration)
-		authServer := service.NewAuthServer(userStore, jwtManager)
-		accessibleRoles := service.NewAccessibleRoles()
-		authInterceptor := service.NewAuthInterceptor(jwtManager, accessibleRoles)
+	userStore := service.NewInMemoryUserStore()
+	jwtManager := service.NewJWTManager(secretKey, tokenDuration)
+	authServer := service.NewAuthServer(userStore, jwtManager)
+	accessibleRoles := service.NewAccessibleRoles()
+	authInterceptor := service.NewAuthInterceptor(jwtManager, accessibleRoles)
 
-		laptopStore := service.NewInMemoryLaptopStore()
-		imageStore := service.NewDiskImageStore("img")
-		ratingStore := service.NewInMemoryRatingStore()
-		err := sendUsers(userStore)
-		if err != nil {
-			log.Fatal(err)
-		}
+	laptopStore := service.NewInMemoryLaptopStore()
+	imageStore := service.NewDiskImageStore("img")
+	ratingStore := service.NewInMemoryRatingStore()
+	err := sendUsers(userStore)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-		// create a new server
-		laptopServer := service.NewLaptopServer(laptopStore, imageStore, ratingStore)
-		grpcServer := grpc.NewServer(
-			grpc.UnaryInterceptor(authInterceptor.Unary()),
-			grpc.StreamInterceptor(authInterceptor.Stream()),
-		)
+	tlsCredentials, err := loadTLSCredentials()
+	if err != nil {
+		log.Fatal("cannot load TLS credentials: ", err)
+	}
 
-		pb.RegisterAuthServiceServer(grpcServer, authServer)
-		pb.RegisterLaptopServiceServer(grpcServer, laptopServer)
-		reflection.Register(grpcServer)
+	// create a new server
+	laptopServer := service.NewLaptopServer(laptopStore, imageStore, ratingStore)
+	grpcServer := grpc.NewServer(
+		grpc.Creds(tlsCredentials),
+		grpc.UnaryInterceptor(authInterceptor.Unary()),
+		grpc.StreamInterceptor(authInterceptor.Stream()),
+	)
 
-		address := fmt.Sprintf("localhost:%d", *port)
-		listener, err := net.Listen("tcp", address)
-		if err != nil {
-			log.Fatalf("cannot start server: %v", err)
-		}
+	pb.RegisterAuthServiceServer(grpcServer, authServer)
+	pb.RegisterLaptopServiceServer(grpcServer, laptopServer)
+	reflection.Register(grpcServer)
 
-		err = grpcServer.Serve(listener)
-		if err != nil {
-			log.Fatalf("cannot start grpc server: %v", err)
-		}
+	address := fmt.Sprintf("localhost:%d", *port)
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		log.Fatalf("cannot start server: %v", err)
+	}
+
+	err = grpcServer.Serve(listener)
+	if err != nil {
+		log.Fatalf("cannot start grpc server: %v", err)
+	}
 
 }
