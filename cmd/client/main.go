@@ -78,6 +78,8 @@ const (
 	password        = "secret"
 	refreshDuration = 30 * time.Second
 	caCertFile      = "cert/ca-cert.pem"
+	certFile        = "cert/client-cert.pem"
+	keyFile         = "cert/client-key.pem"
 )
 
 func loadTLSCredentials() (credentials.TransportCredentials, error) {
@@ -93,8 +95,15 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 		return nil, fmt.Errorf("cannot add server CA's certificate")
 	}
 
+	// load cleint certificate and private key
+	cleintCert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return nil, err
+	}
+
 	config := &tls.Config{
-		RootCAs: certPool,
+		Certificates: []tls.Certificate{cleintCert},
+		RootCAs:      certPool,
 	}
 
 	return credentials.NewTLS(config), nil
