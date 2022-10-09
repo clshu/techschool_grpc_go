@@ -443,3 +443,8 @@ public void searchLaptop(SearchLaptopRequest request, StreamObserver<SearchLapto
 - Call onComplete to finish it
 
 5. Use CountDownLatch to synchronize.
+
+# Lecture #16.1
+## How save the password somewhere that was used for encrypting private keys
+- AWS Secret Manger
+- HashiCorp Vault
