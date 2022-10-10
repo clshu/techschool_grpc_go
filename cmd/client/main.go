@@ -112,33 +112,41 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 func main() {
 
 	serverAddress := flag.String("address", "", "the server address")
+	enableTLS := flag.Bool("tls", false, "enable TLS for RPC")
 	flag.Parse()
-	log.Printf("dial server %s", *serverAddress)
+	log.Printf("dial server %s TLS = %t", *serverAddress, *enableTLS)
 
-	tlsCredentials, err := loadTLSCredentials()
-	if err != nil {
-		log.Fatalf("cannot load TLS credentials: %v", err)
+	transportOption := grpc.WithInsecure()
+	if *enableTLS {
+		tlsCredentials, err := loadTLSCredentials()
+		if err != nil {
+			log.Fatalf("cannot load TLS credentials: %v", err)
+		}
+		transportOption = grpc.WithTransportCredentials(tlsCredentials)
 	}
 
 	// create a new gRPC client
-	conn, err := grpc.Dial(*serverAddress, grpc.WithTransportCredentials(tlsCredentials))
+	conn, err := grpc.Dial(*serverAddress, transportOption)
 	if err != nil {
 		log.Fatalf("cannot dial server: %v", err)
 	}
 
 	authMethods := client.NewAuthMethods()
 	authClient := client.NewAuthClient(conn, username, password)
+
 	interceptor, err := client.NewAuthInterceptor(authClient, authMethods, refreshDuration)
 	if err != nil {
 		log.Fatalf("cannot create auth interceptor: %v", err)
 	}
 
-	conn2, err := grpc.Dial(
-		*serverAddress,
+	opts := []grpc.DialOption{
 		grpc.WithUnaryInterceptor(interceptor.Unary()),
 		grpc.WithStreamInterceptor(interceptor.Stream()),
-		grpc.WithTransportCredentials(tlsCredentials),
-	)
+		transportOption,
+	}
+
+	conn2, err := grpc.Dial(*serverAddress, opts...)
+
 	if err != nil {
 		log.Fatalf("cannot dial server: %v", err)
 	}

@@ -1,3 +1,8 @@
+# To create certificate and private keys
+1. If the reposetory is newly cloned and no files in cert/, run "make submodule" to clone submodule cert
+2. If cert/ is poulated, then run "make cert" 
+ to create certificates and private keys.
+
 # Lecture #7
 
 ## Fix vscode-proto3 can find import problem.
