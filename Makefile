@@ -38,7 +38,7 @@ client1:
 		go run cmd/client/main.go -address localhost:8080
 
 test:
-		go test -cover -race ./...
+		mkdir -p tmp; go test -cover -race ./...
 
 cert:
 		cd cert; ./gen.sh; cd ..
