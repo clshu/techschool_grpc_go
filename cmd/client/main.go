@@ -96,14 +96,14 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 	}
 
 	// load cleint certificate and private key
-	cleintCert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return nil, err
-	}
+	// cleintCert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	config := &tls.Config{
-		Certificates: []tls.Certificate{cleintCert},
-		RootCAs:      certPool,
+		// Certificates: []tls.Certificate{cleintCert},
+		RootCAs: certPool,
 	}
 
 	return credentials.NewTLS(config), nil
