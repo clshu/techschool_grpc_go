@@ -7,8 +7,14 @@ gen:
 clean:
 		rm -rf pb/*
 
+server1-tls:
+		go run cmd/server/main.go -port 50052 -tls
+
 server1:
 		go run cmd/server/main.go -port 50052
+
+server2-tls:
+		go run cmd/server/main.go -port 50053 -tls
 
 server2:
 		go run cmd/server/main.go -port 50053
@@ -37,4 +43,4 @@ test:
 cert:
 		cd cert; ./gen.sh; cd ..
 
-.PHONY: gen clean server server-tls client client-tls test cert submodule server1 server2
+.PHONY: gen clean server server-tls client client-tls test cert submodule server1 server1-tls server2 server2-tls

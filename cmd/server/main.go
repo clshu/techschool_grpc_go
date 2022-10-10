@@ -2,10 +2,8 @@ package main
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"learngrpc/pcbook/pb"
 	"learngrpc/pcbook/service"
 	"log"
@@ -45,16 +43,16 @@ const (
 
 func loadTLSCredentials() (credentials.TransportCredentials, error) {
 	// load CA certificate
-	pemClientCA, err := ioutil.ReadFile(caCertFile)
-	if err != nil {
-		return nil, err
-	}
+	// pemClientCA, err := ioutil.ReadFile(caCertFile)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	// create a certificate pool from CA certificate
-	certPool := x509.NewCertPool()
-	if !certPool.AppendCertsFromPEM(pemClientCA) {
-		return nil, fmt.Errorf("cannot add client CA's certificate")
-	}
+	// // create a certificate pool from CA certificate
+	// certPool := x509.NewCertPool()
+	// if !certPool.AppendCertsFromPEM(pemClientCA) {
+	// 	return nil, fmt.Errorf("cannot add client CA's certificate")
+	// }
 
 	// load server certificate and private key
 	serverCert, err := tls.LoadX509KeyPair(certFile, keyFile)
@@ -65,8 +63,8 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 	// create credentials and return it
 	config := &tls.Config{
 		Certificates: []tls.Certificate{serverCert},
-		ClientAuth:   tls.RequireAndVerifyClientCert,
-		ClientCAs:    certPool,
+		ClientAuth:   tls.NoClientCert,
+		// ClientCAs:    certPool,
 	}
 	return credentials.NewTLS(config), nil
 }
