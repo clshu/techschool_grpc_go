@@ -2,10 +2,14 @@ submodule:
 		git submodule init; git submodule update
 
 gen:
-		protoc --proto_path=proto proto/*.proto --go_out=. --plugin=grpc --go-grpc_out=.
+		mkdir -p pb openapiv2; protoc --proto_path=proto proto/*.proto \
+			--go_out ./pb --go_opt paths=source_relative \
+    	--go-grpc_out ./pb --go-grpc_opt paths=source_relative \
+			--grpc-gateway_out ./pb --grpc-gateway_opt paths=source_relative \
+			--openapiv2_out=./openapiv2
 
 clean:
-		rm -rf pb/*
+		rm -rf pb openapiv2
 
 server1-tls:
 		go run cmd/server/main.go -port 50052 -tls
