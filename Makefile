@@ -29,6 +29,12 @@ server-tls:
 server:
 		go run cmd/server/main.go -port 50051
 
+rest-tls:
+		go run cmd/server/main.go -port 8081 -type rest -tls
+
+rest:
+		go run cmd/server/main.go -port 8081 -type rest
+
 client-tls:
 		go run cmd/client/main.go -address localhost:50051 -tls
 
